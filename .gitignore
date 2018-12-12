@@ -1,0 +1,12 @@
+/target/
+.idea/
+*.iml
+target/*
+*.DS_Store
+*.zip
+*.gz
+*.log
+package-lock.json
+/build
+/node_modules/
+node_modules/*
