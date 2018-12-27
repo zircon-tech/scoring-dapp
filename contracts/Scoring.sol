@@ -43,6 +43,19 @@ contract Scoring {
 
     mapping (bytes32 => Organization) public organizations;
 
+    uint keyGen;
+
+    function _getHash() internal returns (bytes32) {
+        keyGen++;
+        return keccak256(abi.encodePacked(keyGen));
+    }
+
+    function getAppKey() public returns (bytes32) {
+        return _getHash();
+    }
+
+
+
     function _getTotalScore(bytes32 _appKey, bytes32 _resourceId, uint _value) internal view returns (uint) {
         return organizations[_appKey].resources[_resourceId].totalScore + _value;
     }
