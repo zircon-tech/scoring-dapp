@@ -2,6 +2,8 @@ pragma solidity ^0.4.24;
 
 contract Scoring {
 
+    address public owner = msg.sender;
+
     event _newOrganization(bytes32 appKey, address sender);
     event _newScorer(bytes32 appKey, bytes32 scorerId, address sender);
     event _newResource(bytes32 appKey, bytes32 resourceId, address sender);
@@ -9,12 +11,10 @@ contract Scoring {
 
     struct Scorer {
         bool proof;
-        string metadata;
     }
 
     struct Resource {
         bool proof;
-        string metadata;
         uint totalScore;
         uint averageScore;
         uint overallScore;
@@ -41,7 +41,11 @@ contract Scoring {
         mapping (bytes32 => Score[]) scoresReceived; // Scores received by a resource
     }
 
-    mapping (bytes32 => Organization) public organizations;
+    mapping (bytes32 => Organization) organizations;
+
+    modifier ownerOnly {
+        if (msg.sender == owner) _;
+    }
 
     function _getTotalScore(bytes32 _appKey, bytes32 _resourceId, uint _value) internal view returns (uint) {
         return organizations[_appKey].resources[_resourceId].totalScore + _value;
@@ -60,28 +64,31 @@ contract Scoring {
         return ((average * total) + _value) / (total + 1);
     }
 
-    function registerOrganization(bytes32 _appKey, uint _min, uint _max) public {
+    function registerOrganization(bytes32 _appKey, uint _min, uint _max) public ownerOnly {
         organizations[_appKey].proof = true;
         organizations[_appKey].scoring = ScoringOptions(_min, _max);
         emit _newOrganization(_appKey, msg.sender);
     }
 
-    function registerScorer(bytes32 _appKey, bytes32 scorerId, string _metadata) public {
+    function registerScorer(bytes32 _appKey, bytes32 scorerId, string _metadata) public ownerOnly {
         require(organizations[_appKey].proof == true, "App not found");
 
         organizations[_appKey].scorers[scorerId] = Scorer(true, _metadata);
         emit _newScorer(_appKey, scorerId, msg.sender);
     }
 
-    function registerResource(bytes32 _appKey, bytes32 resourceId, string _metadata) public returns (bytes32) {
+    function registerResource(bytes32 _appKey, bytes32 resourceId, string _metadata) public returns (bytes32) ownerOnly {
         require(organizations[_appKey].proof == true, "App not found");
 
         organizations[_appKey].resources[resourceId] = Resource(true, _metadata, 0, 0, 0);
         emit _newResource(_appKey, resourceId, msg.sender);
     }
 
-    function sendScore(bytes32 _appKey, bytes32 _scorerId, bytes32 _resourceId, uint _value, uint _weight) public {
+    function sendScore(bytes32 _appKey, bytes32 _scorerId, bytes32 _resourceId, uint _value, uint _weight) public ownerOnly {
         require(organizations[_appKey].proof == true, "App not found");
+        require(organizations[_appKey].scorers[_scorerId].proof == true, "Scorer not found");
+        require(organizations[_appKey].resources[_resourceId].proof == true, "Resource not found");
+
         uint w = _weight;
         if (w == 0) {
             w = 1;
@@ -98,8 +105,9 @@ contract Scoring {
         emit _newScore(_appKey, _scorerId, _resourceId, _value * w);
     }
 
-    function getScore(bytes32 _appKey, bytes32 _resourceId) public view returns (uint, uint, uint) {
+    function getScore(bytes32 _appKey, bytes32 _resourceId) public view returns (uint, uint, uint) ownerOnly {
         require(organizations[_appKey].proof == true, "App not found");
+        require(organizations[_appKey].resources[_resourceId].proof == true, "Resource not found");
 
         uint totalScore = organizations[_appKey].resources[_resourceId].totalScore;
         uint averageScore = organizations[_appKey].resources[_resourceId].averageScore;
@@ -107,3 +115,7 @@ contract Scoring {
         return (totalScore, averageScore, overallScore);
     }
 }
+
+// orgid = 0xa8d99fc0290d7bc1fe5a8f2db41158c66a6ee3c3f6a89cfa0fe30af78622a917
+// resourceid = 0xa8d99fc0290d7bc1fe5a8f2db41158c66a6ee3c3f6a89cfa0fe30af78622a918
+// scorerid = 0xa8d99fc0290d7bc1fe5a8f2db41158c66a6ee3c3f6a89cfa0fe30af78622a919
