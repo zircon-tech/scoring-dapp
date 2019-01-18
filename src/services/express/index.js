@@ -36,5 +36,18 @@ export default (apiRoot, routes) => {
   app.use(passport.initialize())
   app.use(passport.session())
 
+  // error handler, send stacktrace only during development
+  app.use((
+    err,
+    req,
+    res,
+    next
+  ) =>
+    res.status(err.status || 500).json({
+      message: err.message ? err.message : 'Something went wrong',
+      stack: env === 'development' ? err.stack : {}
+    })
+  )
+
   return app
 }
